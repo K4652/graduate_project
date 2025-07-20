@@ -1,0 +1,101 @@
+{% extends "layout.html" %}
+{% block title %}Analytics{% endblock %}
+
+{% block content %}
+  <h2>Analytics</h2>
+  <!-- 2) 썸네일 영역 -->
+  <div class="thumb-row">
+    {% for filename in files %}
+      <div class="thumb" data-filename="{{ filename }}">
+        {% set ext = filename.lower().rsplit('.',1)[1] %}
+        {% if ext in ['mp4','webm','ogg'] %}
+          <video class="thumb-video" 
+                 src="{{ url_for('static', filename='uploads/' ~ filename) }}" 
+                 preload="auto" muted style="display:none">
+          </video>
+          <canvas class="thumb-canvas"></canvas>
+        {% else %}
+          <img class="thumb-img"
+               src="{{ url_for('static', filename='uploads/' ~ filename) }}"
+               alt="{{ filename }}">
+        {% endif %}
+      </div>
+    {% endfor %}
+    {% if not files %}
+      <p class="no-files">업로드된 파일이 없습니다.</p>
+    {% endif %}
+  </div>
+
+  <!-- 1) 메인 디스플레이 영역 -->
+  <div class="detail-row">
+    <!-- 왼쪽에는 video -->
+    <div class="preview-box">
+      <video id="main-video" controls style="display:none; width: 100%; height: auto;"></video>
+    </div>
+    <!-- 오른쪽에는 snapshot image -->
+    <div class="preview-box">
+      <img id="main-img" style="display:none; width: 100%; height: auto;"/>
+    </div>
+  </div>
+
+  <!-- 3) 스크립트: 썸네일 생성 + 클릭 핸들러 -->
+  <script>
+    const baseUrl = "{{ url_for('static', filename='uploads/') }}";
+    // 3-1) 썸네일 생성
+    document.querySelectorAll('.thumb').forEach(thumb=>{
+      const fn = thumb.dataset.filename;
+      const ext = fn.split('.').pop().toLowerCase();
+
+      if (['mp4','webm','ogg'].includes(ext)) {
+        const video = thumb.querySelector('video.thumb-video');
+        const canvas = thumb.querySelector('canvas.thumb-canvas');
+        const ctx = canvas.getContext('2d');
+
+        video.addEventListener('loadeddata', ()=> {
+          canvas.width  = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video,0,0, canvas.width, canvas.height);
+          video.remove();        // 비디오 엘리먼트 제거
+        });
+        video.load();
+      }
+    });
+
+    // 3-2) 클릭 핸들러: 메인 영역에 띄우기
+    const mainVideo = document.getElementById('main-video');
+    const mainImg   = document.getElementById('main-img');
+
+    document.querySelectorAll('.thumb').forEach(thumb=>{
+      thumb.addEventListener('click', ()=>{
+        const fn  = thumb.dataset.filename;
+        const ext = fn.split('.').pop().toLowerCase();
+        const full = baseUrl + fn;
+
+        if (['mp4','webm','ogg'].includes(ext)) {
+          // ▶️ 메인 비디오 보여주기
+          mainVideo.src = full;
+          mainVideo.style.display = 'block';
+          // ▶️ 메인 스냅샷도 생성
+          mainImg.style.display = 'block';
+          // 임시 비디오로 첫 프레임 캡처
+          const tmp = document.createElement('video');
+          tmp.src   = full;
+          tmp.muted = true;
+          tmp.addEventListener('loadeddata', ()=>{
+            const canvas = document.createElement('canvas');
+            canvas.width  = tmp.videoWidth;
+            canvas.height = tmp.videoHeight;
+            canvas.getContext('2d').drawImage(tmp,0,0);
+            mainImg.src = canvas.toDataURL();  
+          });
+          tmp.load();
+        } else {
+          // 🖼️ 그냥 이미지 파일일 때
+          mainVideo.style.display = 'none';
+          mainImg.src = full;
+          mainImg.style.display = 'block';
+        }
+      });
+    });
+  </script>
+{% endblock %}

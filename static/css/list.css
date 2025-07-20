@@ -1,0 +1,158 @@
+.selector-row table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 8px;       /* 행 사이에 간격 */
+  overflow: visible;
+}
+
+.selector-row th, .selector-row td {
+  padding: 12px 16px;
+  vertical-align: middle;
+  overflow: visible;
+  border-radius: 8px;
+}
+
+.selector-row thead th {
+  background: transparent;
+  color: #555;
+  font-weight: 600;
+  text-align: left;
+  overflow: visible;
+}
+
+.selector-row tbody tr {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+  overflow: visible;
+}
+
+.selector-row tbody tr td:first-child,
+.selector-row thead th:first-child {
+  padding-left: 24px;
+}
+
+.icon-sm {
+  width: 20px;
+  height: auto;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+.sort-icon {
+  font-size: 0.8em;
+  margin-left: 4px;
+  color: #aaa;
+}
+
+.btn-download {
+  display: inline-block;
+  padding: 6px 12px;
+  background: #e3f8e9;
+  color: #2d8a40;
+  border-radius: 20px;
+  text-decoration: none;
+  font-size: 0.9em;
+}
+
+.star-icon {
+  cursor: pointer;
+  color: #ccc;
+  font-size: 1.2em;
+  user-select: none;
+}
+.star-icon.active {
+  color: gold;
+}
+.more-menu {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+  font-size: 1.4em;
+}
+.more-menu:hover .more-dropdown {
+  display: block;
+}
+.more-dropdown {
+  list-style: none;   /* 불릿 기호 제거 */
+  margin: 0;          /* UL의 기본 마진 제거 */
+  padding: 0;         /* UL의 기본 들여쓰기를 제거 */
+
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 60%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  overflow: hidden;
+  margin-top: 8px;
+  z-index: 100;
+  min-width: 140px;
+}
+.more-dropdown li {
+  margin: 4px 0;      /* 필요하다면 조정 */
+  padding: 0;
+}
+.more-dropdown li a {
+  display: flex;
+  align-items: center;
+  gap: 8px;               /* 아이콘 쓸 때 사이 여유 */
+  padding: 10px 16px;
+  text-decoration: none;
+  font-size: 0.95rem;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+.dropdown-icon {
+  width: 16px;   /* 원하는 크기로 조정 */
+  height: auto;
+}
+
+.more-dropdown li:hover {
+  background: #f5f5f5;
+}
+.more-dropdown li a.edit-btn {
+  color: #3b82f6;
+  background: #eef5ff;
+}
+.more-dropdown li a.edit-btn:hover {
+  background: #dde9fe;
+}
+
+/* 6) Delete 버튼 스타일 */
+.more-dropdown li a.delete-btn {
+  color: #e53935;
+  background: #ffebee;
+}
+.more-dropdown li a.delete-btn:hover {
+  background: #fbdcdc;
+}
+
+.select-all-header {
+  cursor: pointer;           /* 클릭 가능한 영역임을 표시 */
+}
+.select-all-header input {
+  cursor: pointer;
+}
+
+tr.editing {
+  background-color: #fffbe6;
+}
+
+/* input 스타일 */
+tr.editing td input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+}
+
+table thead th {
+  position: sticky;
+  top: 0;
+  background: #fff;   /* 헤더 배경색 그대로 유지 */
+  z-index: 10;        /* 콘텐츠 위에 떠 있도록 */
+}
