@@ -6,319 +6,7 @@
   {{ super() }}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/list.css') }}">
 
-  <script>
-    document.addEventListener('DOMContentLoaded', ()=>{
-    const masterCb     = document.getElementById('select-all');
-  const rowCbs       = document.querySelectorAll('.row-checkbox');
-  const dlAllBtn     = document.getElementById('download-selected');
-  const delAllBtn    = document.getElementById('delete-selected');
-
-  // 전체 토글
-  masterCb.addEventListener('change', ()=> {
-    rowCbs.forEach(cb => cb.checked = masterCb.checked);
-  });
-
-  // 선택된 동영상만 다운로드
-  dlAllBtn.addEventListener('click', e => {
-    e.preventDefault();
-    const checked = Array.from(rowCbs).filter(cb=>cb.checked);
-    if (!checked.length) {
-      return alert('먼저 행을 선택해주세요.');
-    }
-    checked.forEach(cb => {
-      const a = cb.closest('tr').querySelector('a.btn-download');
-      // 임시 앵커 클릭하여 다운로드
-      const tmp = document.createElement('a');
-      tmp.href = a.href;
-      tmp.download = '';
-      document.body.appendChild(tmp);
-      tmp.click();
-      document.body.removeChild(tmp);
-    });
-  });
-
-  // 선택된 행 삭제
-  delAllBtn.addEventListener('click', e => {
-    e.preventDefault();
-    const checked = Array.from(rowCbs).filter(cb=>cb.checked);
-    if (!checked.length) {
-      return alert('먼저 행을 선택해주세요.');
-    }
-    if (!confirm(`${checked.length}개 행을 정말 삭제하시겠습니까?`)) {
-      return;
-    }
-    // report_id 리스트 추출
-    const ids = checked.map(cb=>cb.closest('tr').dataset.reportId);
-    fetch('{{ url_for("list.delete_selected") }}', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ ids })
-    })
-    .then(r=>r.json())
-    .then(res => {
-      if (res.success) {
-        checked.forEach(cb => cb.closest('tr').remove());
-      } else {
-        alert('삭제에 실패했습니다.');
-      }
-    })
-    .catch(()=>{
-      alert('네트워크 오류');
-    });
-  });
-
-      // ① 셀 값 꺼내기
-      const getCellValue = (tr, idx) =>
-        tr.children[idx].innerText.trim();
-
-      // ② 비교기 함수 생성기
-      const comparer = (idx, asc, type) => (a, b) => {
-        let v1 = getCellValue(a, idx), v2 = getCellValue(b, idx);
-        // a⇄b 위치를 asc 여부에 맞춰 바꿔줄 수도 있지만,
-        // 아래처럼 multiply로 처리해도 됩니다.
-        const mult = asc ? 1 : -1;
-
-        if (type === 'number') {
-          const n1 = parseInt(v1.replace(/\D/g,''),10)||0;
-          const n2 = parseInt(v2.replace(/\D/g,''),10)||0;
-          return (n1 - n2) * mult;
-        }
-        if (type === 'date') {
-          return (new Date(v1) - new Date(v2)) * mult;
-        }
-        if (type === 'true') {
-          // 즐겨찾기 ★ 아이콘에 active 클래스를 달았다면…
-          const aStar = a.querySelector('.star-icon.active') != null;
-          const bStar = b.querySelector('.star-icon.active') != null;
-          return ((aStar === bStar) ? 0 : aStar ? 1 : -1) * mult;
-        }
-        // 문자열 비교
-        return v1.localeCompare(v2, undefined, {numeric:true}) * mult;
-      };
-
-      // ③ 헤더에 이벤트 연결
-      document.querySelectorAll('th.sortable').forEach(th=>{
-        let asc = true;  // 클릭할 때마다 이 값이 토글됩니다
-        const arrow = th.querySelector('.arrow');
-
-        th.addEventListener('click', ()=>{
-          const table = th.closest('table');
-          const tbody = table.querySelector('tbody');
-          const idx   = th.cellIndex;
-          const type  = th.dataset.type || 'string';
-
-          // 토글 방향 미리 바꿔주기
-          asc = !asc;
-
-          // (선택사항) 모든 헤더의 화살표 지우기
-          table.querySelectorAll('th.sortable .arrow')
-               .forEach(a=> a.textContent = '');
-
-          // 클릭한 헤더에만 화살표 세팅
-          arrow.textContent = asc ? '▲' : '▼';
-
-          // ④ 정렬 & 재렌더
-          Array.from(tbody.querySelectorAll('tr'))
-               .sort(comparer(idx, asc, type))
-               .forEach(tr=> tbody.appendChild(tr));
-        });
-      });
-     document.querySelectorAll('.star-icon').forEach(icon=>{
-    icon.addEventListener('click', async ()=>{
-      // 1) UI 토글
-      icon.classList.toggle('active');
-      const isFav = icon.classList.contains('active');
-      const id    = icon.dataset.id;
-
-      // 2) (선택) 서버에 저장 – /list/toggle_favorite 엔드포인트
-      try {
-        const res = await fetch("{{ url_for('list.toggle_favorite') }}", {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: id, fav: isFav })
-        });
-        if (!res.ok) throw new Error('서버 저장 실패');
-      } catch(err) {
-        console.error(err);
-        // 실패 시 UI 롤백
-        icon.classList.toggle('active');
-        alert('즐겨찾기 상태 저장에 실패했습니다.');
-      }
-    });
-  }); 
-  const selectAll = document.getElementById('select-all');
-  const rowCheckboxes = document.querySelectorAll('.row-checkbox');
-  const selectAllHeader = document.querySelector('th.select-all-header');
-
-  // (A) 헤더 체크박스 변경 → 모든 행 체크박스 동기화
-  selectAll.addEventListener('change', () => {
-    rowCheckboxes.forEach(cb => cb.checked = selectAll.checked);
-  });
-
-  // (B) 개별 행 체크박스 변경 → 모든 선택 시 헤더도 체크, 하나라도 해제 시 헤더 해제
-  rowCheckboxes.forEach(cb => {
-    cb.addEventListener('change', () => {
-      const allChecked = Array.from(rowCheckboxes).every(c => c.checked);
-      selectAll.checked = allChecked;
-    });
-  });
-
-  // (C) 헤더 셀 클릭 → 체크박스 클릭 이벤트 트리거
-  selectAllHeader.addEventListener('click', e => {
-    // 체크박스 자체 클릭은 중복 방지
-    if (e.target !== selectAll) {
-      selectAll.checked = !selectAll.checked;
-      selectAll.dispatchEvent(new Event('change'));
-    }
-  });
-  // 편집 가능한 셀 인덱스
-  const EDITABLE = [1,2,3,4,5];
-
-  // Handler 등록
-  document.querySelectorAll('.more-dropdown').forEach(dropdown => {
-    dropdown.addEventListener('click', e => {
-      const editBtn = e.target.closest('.edit-btn');
-      if (editBtn) {
-        e.preventDefault();
-        enterEditMode(editBtn);
-      }
-    });
-  });
-
-  // 편집 모드 진입
-  function enterEditMode(editBtn) {
-    const tr = editBtn.closest('tr');
-    if (tr.classList.contains('editing')) return;
-    tr.classList.add('editing');
-
-    // 원본 값 보관
-    tr._orig = EDITABLE.map(i => tr.children[i].innerText.trim());
-
-    // 셀을 <input> 으로 교체
-    EDITABLE.forEach((i, idx) => {
-      const cell = tr.children[i];
-      const val = cell.innerText.trim();
-      cell.innerHTML = `<input type="text" value="${val.replace(/"/g,'&quot;')}" />`;
-    });
-
-    // 드롭다운 메뉴를 Save / Cancel 로 교체
-    const dropdown = tr.querySelector('.more-dropdown');
-    dropdown.innerHTML = `
-      <li>
-        <a href="#" class="save-btn">
-          <img src="{{ url_for('static',filename='img/Save.png') }}"
-               class="dropdown-icon" alt="Save">
-          Save
-        </a>
-      </li>
-      <li>
-        <a href="#" class="cancel-btn">Cancel</a>
-      </li>
-    `;
-
-    // Save, Cancel 이벤트 바인딩
-    dropdown.querySelector('.save-btn')
-            .addEventListener('click', e => { e.preventDefault(); saveRow(tr); });
-    dropdown.querySelector('.cancel-btn')
-            .addEventListener('click', e => { e.preventDefault(); cancelEdit(tr); });
-  }
-
-  // 저장
-  async function saveRow(tr) {
-  const payload = {};
-  EDITABLE.forEach(i => {
-    const cell = tr.children[i];
-    payload[ i ] = cell.querySelector('input').value;
-  });
-  payload.row_id = tr.dataset.reportId;   // 각 <tr>에 보고서 id를 data-report-id 속성으로 미리 달아두세요
-
-  // 1) 서버에 전송
-  try {
-    const res = await fetch("{{ url_for('list.update_report') }}", {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) throw new Error(await res.text());
-
-    // 2) 서버 저장이 성공했을 때만 DOM 업데이트
-    EDITABLE.forEach(i => {
-      const input = tr.children[i].querySelector('input');
-      tr.children[i].innerText = input.value;
-    });
-    exitEditMode(tr);
-
-  } catch(err) {
-    alert("저장에 실패했습니다: " + err);
-    // 실패하면 편집모드 취소
-    cancelEdit(tr);
-  }
-}
-
-  // 취소
-  function cancelEdit(tr) {
-    tr._orig.forEach((val, idx) => {
-      const cell = tr.children[ EDITABLE[idx] ];
-      cell.innerText = val;
-    });
-    exitEditMode(tr);
-  }
-
-  // 편집 모드 해제
-  function exitEditMode(tr) {
-    tr.classList.remove('editing');
-    delete tr._orig;
-
-    const dropdown = tr.querySelector('.more-dropdown');
-    dropdown.innerHTML = `
-      <li>
-        <a href="#" class="edit-btn">
-          <img src="{{ url_for('static',filename='img/Edit.png') }}"
-               class="dropdown-icon" alt="Edit">
-          Edit
-        </a>
-      </li>
-      <li>
-        <a href="#" class="delete-btn">
-          <img src="{{ url_for('static',filename='img/Delete.png') }}"
-               class="dropdown-icon" alt="Delete">
-          Delete
-        </a>
-      </li>
-    `;
-
-    // 다시 Edit 버튼만 등록
-    dropdown.querySelector('.edit-btn')
-            .addEventListener('click', e => { e.preventDefault(); enterEditMode(e.target); });
-  }
-
-  document.querySelectorAll('.delete-btn').forEach(btn=>{
-      btn.addEventListener('click', e=>{
-        e.preventDefault();
-        const tr     = btn.closest('tr');
-        const row_id = tr.dataset.reportId; 
-        if (!confirm('정말 이 신고를 삭제하시겠습니까?')) return;
-
-        fetch("{{ url_for('list.delete_report') }}", {
-          method: 'POST',
-          headers: { 'Content-Type':'application/json' },
-          body: JSON.stringify({ row_id })
-        })
-        .then(r => r.json())
-        .then(data => {
-          if (data.status === 'ok') {
-            tr.remove();
-          } else {
-            alert('삭제 실패: ' + data.message);
-          }
-        })
-        .catch(err => {
-          alert('삭제 요청 에러: ' + err);
-        });
-      });
-    });
-    });
-  </script>
+  
 {% endblock %}
 
 {% block content %}
@@ -354,7 +42,7 @@
     </th>
         <th> <div class="more-menu">⋯ <ul class="more-dropdown">
           <li>
-        <a href="#" class="delete-selected-btn">
+        <a href="#" id="delete-selected" class="delete-selected">
               <img
                 src="{{ url_for('static', filename='img/Delete.png') }}"
                 class="dropdown-icon"
@@ -381,9 +69,12 @@
         <td>{{ r.location }}</td>
         <td><a href="{{ url_for('static', filename=r.media_path) }}"
            download class="btn-download">동영상 다운로드</a></td>
-        <td><span class="star-icon{% if r.starred %} active{% endif %}"
-              data-id="{{ r.id }}">★</span>
-        </td>
+        <td>
+    <span
+      class="star-icon{% if r.is_starred %} active{% endif %}"
+      data-id="{{ r.report_id }}"
+    >★</span>
+  </td>
         <td><div class="more-menu">⋯
               <ul class="more-dropdown">
       <li>
@@ -416,4 +107,192 @@
     </tbody>
   </table>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // 요소 가져오기
+  const selectAllCb = document.getElementById('select-all');
+  const rowCbs      = document.querySelectorAll('.row-checkbox');
+  const dlBtn       = document.getElementById('download-selected');
+  const delBtn      = document.getElementById('delete-selected');
+
+  // 1) 전체 선택 토글
+  selectAllCb.addEventListener('change', () => {
+    rowCbs.forEach(cb => cb.checked = selectAllCb.checked);
+  });
+
+  // 2) 선택 다운로드
+  dlBtn.addEventListener('click', e => {
+    e.preventDefault();
+    const checked = Array.from(rowCbs).filter(cb=>cb.checked);
+    if (!checked.length) return alert('먼저 행을 선택하세요.');
+    checked.forEach(cb => {
+      const link = cb.closest('tr').querySelector('a.btn-download');
+      const tmp = document.createElement('a');
+      tmp.href = link.href; tmp.download = '';
+      document.body.appendChild(tmp);
+      tmp.click();
+      document.body.removeChild(tmp);
+    });
+  });
+
+  // 3) 선택 삭제
+  delBtn.addEventListener('click', e => {
+    e.preventDefault();
+    const checked = Array.from(rowCbs).filter(cb=>cb.checked);
+    if (!checked.length) return alert('먼저 행을 선택하세요.');
+    if (!confirm(`${checked.length}개 행을 정말 삭제하시겠습니까?`)) return;
+    const ids = checked.map(cb => cb.closest('tr').dataset.reportId);
+    fetch('{{ url_for("list.delete_selected") }}', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ ids })
+    })
+    .then(r=>r.json())
+    .then(res => {
+      if (res.success) {
+        checked.forEach(cb => cb.closest('tr').remove());
+      } else {
+        alert('삭제 실패: '+res.message);
+      }
+    })
+    .catch(()=>alert('네트워크 오류'));
+  });
+
+  // 4) 컬럼별 정렬
+  const getCellValue = (tr, idx) => tr.children[idx].innerText.trim();
+  const comparer = (idx, asc, type) => (a,b) => {
+    let v1 = getCellValue(a, idx), v2 = getCellValue(b, idx), mult=asc?1:-1;
+    if (type==='number')   return (parseInt(v1.replace(/\D/g,''),10)||0 - parseInt(v2.replace(/\D/g,''),10)||0)*mult;
+    if (type==='date')     return (new Date(v1)-new Date(v2))*mult;
+    if (type==='true') {
+      const aStar = a.querySelector('.star-icon.active')!=null;
+      const bStar = b.querySelector('.star-icon.active')!=null;
+      return ((aStar===bStar)?0:(aStar?1:-1))*mult;
+    }
+    return v1.localeCompare(v2,undefined,{numeric:true})*mult;
+  };
+  document.querySelectorAll('th.sortable').forEach(th => {
+    let asc = true;
+    th.addEventListener('click', () => {
+      const table = th.closest('table'), tbody = table.querySelector('tbody'),
+            idx = th.cellIndex, type = th.dataset.type||'string';
+      // arrow
+      table.querySelectorAll('.arrow').forEach(a=>a.textContent='');
+      th.querySelector('.arrow').textContent = asc?'▲':'▼';
+      asc = !asc;
+      Array.from(tbody.querySelectorAll('tr'))
+           .sort(comparer(idx, asc, type))
+           .forEach(tr=>tbody.appendChild(tr));
+    });
+  });
+
+  // 5) 즐겨찾기 토글
+  document.querySelectorAll('.star-icon').forEach(icon => {
+    icon.addEventListener('click', async () => {
+      icon.classList.toggle('active');
+      const fav = icon.classList.contains('active'),
+            id  = icon.dataset.id;
+      try {
+        let res = await fetch("{{ url_for('list.toggle_favorite') }}", {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ id, fav })
+        });
+        if(!res.ok) throw '';
+      } catch(err) {
+        icon.classList.toggle('active');
+        alert('즐겨찾기 저장 실패');
+      }
+    });
+  });
+
+  // 6) 개별 더보기(Edit/Delete)
+  document.querySelectorAll('.edit-btn').forEach(btn=>{
+    btn.addEventListener('click', e => {
+      e.preventDefault();
+      const tr = btn.closest('tr');
+      if (tr.classList.contains('editing')) return;
+      tr.classList.add('editing');
+      // 원본 보관
+      tr._orig = [2,3,4,5].map(i=>tr.children[i].innerText.trim());
+      // input 교체
+      [2,3,4,5].forEach((i, idx)=>{
+        const cell = tr.children[i], val = cell.innerText.trim();
+        cell.innerHTML = `<input value="${val}" />`;
+      });
+      // 메뉴 바꾸기
+      const menu = tr.querySelector('.more-dropdown');
+      menu.innerHTML = `
+        <li><a href="#" class="save-btn">Save</a></li>
+        <li><a href="#" class="cancel-btn">Cancel</a></li>
+      `;
+      // Save
+      menu.querySelector('.save-btn').addEventListener('click', async ev=>{
+        ev.preventDefault();
+        const payload = { row_id: tr.dataset.reportId };
+        [2,3,4,5].forEach(i=>{
+          payload[i] = tr.children[i].querySelector('input').value;
+        });
+        try {
+          let res = await fetch("{{ url_for('list.update_report') }}", {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify(payload)
+          });
+          if(!res.ok) throw '';
+          // 반영
+          [2,3,4,5].forEach(i=>{
+            tr.children[i].innerText = payload[i];
+          });
+          exitEdit(tr);
+        } catch {
+          alert('저장 실패');
+          exitEdit(tr, true);
+        }
+      });
+      // Cancel
+      menu.querySelector('.cancel-btn').addEventListener('click', ev=>{
+        ev.preventDefault();
+        exitEdit(tr, true);
+      });
+    });
+  });
+  function exitEdit(tr, rollback){
+    if(rollback){
+      [2,3,4,5].forEach((i,idx)=>{
+        tr.children[i].innerText = tr._orig[idx];
+      });
+    }
+    delete tr._orig;
+    tr.classList.remove('editing');
+    // 메뉴 복원
+    tr.querySelector('.more-dropdown').innerHTML = `
+      <li><a href="#" class="edit-btn">Edit</a></li>
+      <li><a href="#" class="delete-btn">Delete</a></li>
+    `;
+  }
+
+  // 7) 개별 삭제
+  document.querySelectorAll('.delete-btn').forEach(btn=>{
+    btn.addEventListener('click', e => {
+      e.preventDefault();
+      const tr = btn.closest('tr'),
+            id = tr.dataset.reportId;
+      if(!confirm('삭제하시겠습니까?')) return;
+      fetch("{{ url_for('list.delete_report') }}", {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ row_id: id })
+      })
+      .then(r=>r.json())
+      .then(res=>{
+        if(res.status==='ok') tr.remove();
+        else alert('삭제 실패');
+      })
+      .catch(()=>alert('오류'));
+    });
+  });
+
+});
+</script>
 {% endblock %}

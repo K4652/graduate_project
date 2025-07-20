@@ -47,7 +47,7 @@ try:
         cur.execute("""
         CREATE TABLE IF NOT EXISTS join_codes (
             id INT PRIMARY KEY AUTO_INCREMENT,
-            code VARCHAR(255) NOT NULL,
+            code_hash VARCHAR(255) NOT NULL,
             description VARCHAR(100)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         """)
