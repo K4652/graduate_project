@@ -36,6 +36,9 @@
         선택 동영상 다운로드
       </button>
     </th>
+    <th>
+      영상분석
+    </th>
 
     <th class="sortable" data-type="true">
       즐겨찾기 <span class="arrow">▼</span>
@@ -69,6 +72,12 @@
         <td>{{ r.location }}</td>
         <td><a href="{{ url_for('static', filename=r.media_path) }}"
            download class="btn-download">동영상 다운로드</a></td>
+        <td>
+          <a href="{{ url_for('list.analytics', report_id=r.report_id) }}"
+             class="btn-link">
+             영상 분석 연결
+           </a>
+        </td>
         <td>
     <span
       class="star-icon{% if r.is_starred %} active{% endif %}"

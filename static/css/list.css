@@ -55,6 +55,16 @@
   font-size: 0.9em;
 }
 
+.btn-link {
+  display: inline-block;
+  padding: 6px 12px;
+  background: #e3f8e9;
+  color: #0084ff;
+  border-radius: 20px;
+  text-decoration: none;
+  font-size: 0.9em;
+}
+
 .star-icon {
   cursor: pointer;
   color: #ccc;

@@ -1,6 +1,7 @@
-import json
+import os
 import pymysql
-from flask import Blueprint, render_template, request, jsonify
+from flask import (Blueprint, render_template,
+request, jsonify, abort, current_app)
 from config import Config
 
 list_bp = Blueprint('list', __name__, url_prefix='/list')
@@ -165,3 +166,47 @@ def delete_selected():
         return jsonify(success=False, message=str(e)), 500
     finally:
         conn.close()
+
+@list_bp.route('/analytics/<int:report_id>')
+def analytics(report_id):
+    conn = get_db_connection()
+    try:
+        # ① 커서 얻기 (필요시 DictCursor로 지정)
+        #    ※ pymysql 사용 시 예: conn.cursor(cursor=pymysql.cursors.DictCursor)
+        cur = conn.cursor()
+        # ② SQL 실행
+        sql = """
+            SELECT pr.*, vr.violation_type
+            FROM public_reports pr
+            LEFT JOIN violation_result vr
+              ON pr.media_path = vr.video_name
+            WHERE pr.report_id = %s
+        """
+        cur.execute(sql, (report_id,))
+        # ③ 결과 가져오기
+        report = cur.fetchone()
+    finally:
+        cur.close()
+        conn.close()
+
+    if report is None:
+        abort(404, f"Report {report_id} not found")
+
+    # ④ 업로드된 파일 목록 읽기
+    upload_dir = os.path.join(
+        current_app.static_folder, 'uploads', str(report_id)
+    )
+    files = []
+    if os.path.isdir(upload_dir):
+        for fname in sorted(os.listdir(upload_dir)):
+            ext = fname.lower().rsplit('.', 1)[-1]
+            if ext in ('mp4', 'webm', 'ogg', 'png', 'jpg', 'jpeg', 'gif'):
+                # 'uploads/5/foo.mp4' 처럼 static 폴더 기준 상대경로로 넣어줍니다
+                files.append(f"uploads/{report_id}/{fname}")
+
+    # ⑤ 템플릿 렌더링
+    return render_template(
+        'analytics.html',
+        report=report,
+        files=files
+    )

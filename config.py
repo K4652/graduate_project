@@ -11,4 +11,4 @@ class Config:
     DB_PORT     = 3306
     # 업로드 폴더(기존 그대로)
     UPLOAD_FOLDER    = os.path.join(BASE_DIR, 'static', 'uploads')
-    ALLOWED_EXTENSIONS = {'png','jpg','jpeg','gif','mp4','webm','ogg'}
+    ALLOWED_EXTENSIONS = {'png','jpg','jpeg','gif','mp4','webm','ogg', 'mov'}
