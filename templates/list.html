@@ -1,0 +1,186 @@
+{% extends "layout.html" %}
+
+{% block title %}List{% endblock %}
+
+{% block head %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/list.css') }}">
+
+  <script>
+    document.addEventListener('DOMContentLoaded', ()=>{
+
+      // ① 셀 값 꺼내기
+      const getCellValue = (tr, idx) =>
+        tr.children[idx].innerText.trim();
+
+      // ② 비교기 함수 생성기
+      const comparer = (idx, asc, type) => (a, b) => {
+        let v1 = getCellValue(a, idx), v2 = getCellValue(b, idx);
+        // a⇄b 위치를 asc 여부에 맞춰 바꿔줄 수도 있지만,
+        // 아래처럼 multiply로 처리해도 됩니다.
+        const mult = asc ? 1 : -1;
+
+        if (type === 'number') {
+          const n1 = parseInt(v1.replace(/\D/g,''),10)||0;
+          const n2 = parseInt(v2.replace(/\D/g,''),10)||0;
+          return (n1 - n2) * mult;
+        }
+        if (type === 'date') {
+          return (new Date(v1) - new Date(v2)) * mult;
+        }
+        if (type === 'true') {
+          // 즐겨찾기 ★ 아이콘에 active 클래스를 달았다면…
+          const aStar = a.querySelector('.star-icon.active') != null;
+          const bStar = b.querySelector('.star-icon.active') != null;
+          return ((aStar === bStar) ? 0 : aStar ? 1 : -1) * mult;
+        }
+        // 문자열 비교
+        return v1.localeCompare(v2, undefined, {numeric:true}) * mult;
+      };
+
+      // ③ 헤더에 이벤트 연결
+      document.querySelectorAll('th.sortable').forEach(th=>{
+        let asc = true;  // 클릭할 때마다 이 값이 토글됩니다
+        const arrow = th.querySelector('.arrow');
+
+        th.addEventListener('click', ()=>{
+          const table = th.closest('table');
+          const tbody = table.querySelector('tbody');
+          const idx   = th.cellIndex;
+          const type  = th.dataset.type || 'string';
+
+          // 토글 방향 미리 바꿔주기
+          asc = !asc;
+
+          // (선택사항) 모든 헤더의 화살표 지우기
+          table.querySelectorAll('th.sortable .arrow')
+               .forEach(a=> a.textContent = '');
+
+          // 클릭한 헤더에만 화살표 세팅
+          arrow.textContent = asc ? '▲' : '▼';
+
+          // ④ 정렬 & 재렌더
+          Array.from(tbody.querySelectorAll('tr'))
+               .sort(comparer(idx, asc, type))
+               .forEach(tr=> tbody.appendChild(tr));
+        });
+      });
+     document.querySelectorAll('.star-icon').forEach(icon=>{
+    icon.addEventListener('click', async ()=>{
+      // 1) UI 토글
+      icon.classList.toggle('active');
+      const isFav = icon.classList.contains('active');
+      const id    = icon.dataset.id;
+
+      // 2) (선택) 서버에 저장 – /list/toggle_favorite 엔드포인트
+      try {
+        const res = await fetch("{{ url_for('list.toggle_favorite') }}", {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: id, fav: isFav })
+        });
+        if (!res.ok) throw new Error('서버 저장 실패');
+      } catch(err) {
+        console.error(err);
+        // 실패 시 UI 롤백
+        icon.classList.toggle('active');
+        alert('즐겨찾기 상태 저장에 실패했습니다.');
+      }
+    });
+  }); 
+    });
+  </script>
+{% endblock %}
+
+{% block content %}
+<h2>영상 리스트</h2>
+<div class="selector-row">
+  <table>
+    <thead>
+      <tr>
+        <th><input type="checkbox"></th>
+
+        <!-- 신고 번호 -->
+        <th class="sortable" data-type="number">
+          신고 번호 <span class="arrow">▼</span>
+        </th>
+
+        <!-- 교통법규 위반 사항 -->
+        <th class="sortable" data-type="string">
+          교통법규 위반 사항 <span class="arrow">▼</span>
+        </th>
+
+        <!-- 영상 날짜 -->
+        <th class="sortable" data-type="date">
+          영상 날짜 <span class="arrow">▼</span>
+        </th>
+
+        <th>번호판</th>
+        <th>신고 장소</th>
+        <th><a class="btn-download">동영상 다운로드</a></th><!-- 다운로드 -->
+        <th class="sortable" data-type="true">즐겨찾기<span class="arrow">▼</span></th><!-- 즐겨찾기 -->
+        <th> <div class="more-menu">⋯ <ul class="more-dropdown">
+          <li>
+        <a href="#" class="delete-btn">
+          <!-- ② 삭제 아이콘 -->
+          <img
+            src="{{ url_for('static', filename='img/Delete.png') }}"
+            alt="Delete"
+            class="dropdown-icon"
+          >
+          Delete
+        </a>
+      </li>
+        </ul></div></th><!-- 더보기 -->
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in reports %}
+      <tr>
+        <td><input type="checkbox"></td>
+        <td>{{ r.id }}</td>
+        <td><img src="{{ url_for('static', filename='img/Alert.png') }}"
+          class="icon-sm" alt="">{{ r.violation }}
+        </td>
+        <td><img src="{{ url_for('static', filename='img/Calendar.png') }}"
+          class="icon-sm" alt="">
+          {{ r.date }}</td>
+        <td>{{ r.plate }}</td>
+        <td><!-- 아이콘 --></td>
+        <td><a href="{{ r.video_url }}" class="btn-download">동영상 다운로드</a></td>
+        <td><span class="star-icon{% if r.starred %} active{% endif %}"
+              data-id="{{ r.id }}">★</span>
+        </td>
+        <td><div class="more-menu">⋯
+              <ul class="more-dropdown">
+      <li>
+        <a href="#" class="edit-btn">
+          <!-- ① 편집 아이콘 -->
+          <img
+            src="{{ url_for('static', filename='img/Edit.png') }}"
+            alt="Edit"
+            class="dropdown-icon"
+          >
+          Edit
+        </a>
+      </li>
+      <li>
+        <a href="#" class="delete-btn">
+          <!-- ② 삭제 아이콘 -->
+          <img
+            src="{{ url_for('static', filename='img/Delete.png') }}"
+            alt="Delete"
+            class="dropdown-icon"
+          >
+          Delete
+        </a>
+      </li>
+    </ul>
+            </div>
+          </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

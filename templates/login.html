@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-left">
+      <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo">
+      <h2>Log in</h2>
+      <form method="POST">
+        <label>이메일 주소</label>
+        <input type="email" name="email" placeholder="example@gmail.com" required>
+        
+        <label>비밀번호</label>
+        <input type="password" name="password" placeholder="●●●●●●●" required>
+        
+        <div class="form-extra">
+          <label><input type="checkbox" name="remember"> Remember me</label>
+          <a href="#">비밀번호 리셋</a>
+        </div>
+        
+        <button type="submit">Log in</button>
+        <p>아직 계정이 없으신가요? <a href="{{ url_for('signup') }}">회원가입</a></p>
+      </form>
+    </div>
+    
+    <div class="login-right">
+      <img src="{{ url_for('static', filename='img/log-in.png') }}" alt="Illustration">
+    </div>
+  </div>
+</body>
+</html>

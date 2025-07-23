@@ -1,0 +1,196 @@
+{# templates/dashboard.html #}
+{% extends "layout.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{# layout.html 의 head 블록을 그대로 쓰지 않거나, 또는 아래처럼 head 블록에만 추가 #}
+{% block head %}
+  {{ super() }}
+  <!-- Dashboard에서만 Chart.js 로컬 파일 불러오기 -->
+  <script src="{{ url_for('static', filename='js/chart.umd.min.js') }}"></script>
+  <!-- bfcache 방지 스크립트도 이곳에 넣어도 됩니다 -->
+  <script>
+    window.addEventListener('pageshow', function(event) {
+      var nav = performance.getEntriesByType('navigation')[0] ||
+                { type: performance.navigation.type };
+      if (event.persisted || nav.type === 2) {
+        window.location.href = "{{ url_for('login') }}";
+      }
+    });
+  </script>
+{% endblock %}
+
+{% block content %}
+  <h2>Dashboard</h2>
+    <div class="summary-cards">
+    <!-- 올해 총 신고 건수 -->
+    <div class="summary-card card-blue">
+      <div class="info">
+        <div class="title">올해 총 신고 건수</div>
+        <div class="value">500,874 건</div>
+      </div>
+      <div class="chart">
+        <canvas id="sparklineYear"></canvas>
+      </div>
+    </div>
+
+    <!-- 이번달 총 신고 건수 -->
+    <div class="summary-card card-yellow">
+      <div class="info">
+        <div class="title">이번달 총 신고 건수</div>
+        <div class="value">234 건</div>
+      </div>
+      <div class="chart">
+        <canvas id="sparklineMonth"></canvas>
+      </div>
+    </div>
+  </div>
+
+    <div class="chart-box">
+      <div class="chart-container">
+        <canvas id="monthlyChart"></canvas>
+      </div>
+      <div class="chart-container">
+        <canvas id="typeRatioChart"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Top 신고 유형</h3>
+      <table style="width:100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th>SN</th>
+            <th>유형</th>
+            <th>신고 수</th>
+            <th>처벌 횟수</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>안전모 미착용</td><td>302,521</td><td style="color: green">284,265</td></tr>
+          <tr><td>2</td><td>신호위반</td><td>151,562</td><td style="color: green">135,652</td></tr>
+          <tr><td>3</td><td>중앙선 침범</td><td>35,124</td><td style="color: green">25,178</td></tr>
+          <tr><td>4</td><td>진로변경 위반</td><td>11,667</td><td style="color: green">9,452</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    function makeSparkline(ctx, data, color) {
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: data.map((_,i)=>i),  // 축 숨길 거라 더미 레이블
+          datasets: [{
+            data: data,
+            borderColor: color,
+            borderWidth: 2,
+            pointRadius: 0,
+            fill: false,
+            tension: 0.4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { display: false },
+            y: { display: false }
+          },
+          elements: {
+            line: { capBezierPoints: true }
+          },
+          layout: { padding: 0 }
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', ()=>{
+      // 예시 데이터: 연간 추세 (12개월 등)
+      makeSparkline(
+        document.getElementById('sparklineYear').getContext('2d'),
+        [30, 45, 60, 55, 70, 85, 90, 120, 140, 130, 150, 160],
+        '#5a65ea'
+      );
+      // 예시 데이터: 월간 추세 (일별 등)
+      makeSparkline(
+        document.getElementById('sparklineMonth').getContext('2d'),
+        [5, 10, 8, 12, 20, 15, 18, 22, 25, 24, 28, 30],
+        '#f6c23e'
+      );
+    });
+    const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
+    new Chart(monthlyCtx, {
+      type: 'bar',
+      data: {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+        datasets: [{
+          label: '신고 수',
+          data: [20, 10, 25, 15, 5, 27],
+          backgroundColor: '#5a65ea'
+        }]
+      },
+      options: { responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+      title: {
+        display: true,              // 제목 켜기
+        text: '월별 신고 건수',      // 제목 텍스트
+        position: 'top',            // 'top' | 'left' | 'bottom' | 'right'
+        align: 'start',             // 'start' (왼쪽), 'center', 'end' (오른쪽)
+        padding: {
+          top: 10,                  // 제목 위쪽 여백
+          bottom: 20,                // 제목 아래쪽 여백
+          left: 20
+        },
+        font: {
+          size: 20,
+          weight: 'bold'
+        },
+        color: 'Black'
+      },
+      legend: {
+        display: false             // 꺾은선/막대 차트에는 범례가 불필요하면 끕니다
+      }
+    }
+  }
+});
+
+    const typeCtx = document.getElementById('typeRatioChart').getContext('2d');
+    new Chart(typeCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['안전모 미착용', '신호위반', '중앙선 침범', '진로변경 위반'],
+        datasets: [{
+          data: [50, 25, 15, 10],
+          backgroundColor: ['#ff7675', '#74b9ff', '#fdcb6e', '#55efc4']
+        }]
+      },
+      options: { responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+      title: {
+        display: true,              // 제목 켜기
+        text: '월별 신고 건수',      // 제목 텍스트
+        position: 'top',            // 'top' | 'left' | 'bottom' | 'right'
+        align: 'start',             // 'start' (왼쪽), 'center', 'end' (오른쪽)
+        padding: {
+          top: 10,                  // 제목 위쪽 여백
+          bottom: 20                // 제목 아래쪽 여백
+        },
+        font: {
+          size: 20,
+          weight: 'bold'
+        },
+        color: 'Black'
+      },
+      legend: {
+        display: false             // 꺾은선/막대 차트에는 범례가 불필요하면 끕니다
+      }
+    }
+  }
+});
+  </script>
+{% endblock %}
