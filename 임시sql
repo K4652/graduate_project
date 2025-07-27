@@ -1,0 +1,49 @@
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    join_code_hash VARCHAR(64) NOT NULL
+    
+);
+
+CREATE TABLE join_codes (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    code VARCHAR(255) NOT NULL,
+    description VARCHAR(100)
+);
+
+INSERT INTO join_codes (code_hash, description)
+VALUES ('0b16d5723d88e95d9a57ec6587f34fa33d4934bcc27b0a199ee024783bca5392', '공공기관 코드 #QWER');
+
+CREATE TABLE public_reports (
+    report_id        INT AUTO_INCREMENT PRIMARY KEY,       -- 신고번호(ID)
+    media_path       VARCHAR(255) NOT NULL,                -- 사진/동영상 경로
+    location         VARCHAR(255) NOT NULL,                -- 신고발생지역
+    title            VARCHAR(100) NOT NULL,                -- 제목
+    content          TEXT NOT NULL,                        -- 신고내용
+    vehicle_number   VARCHAR(20),                          -- 차량번호 (nullable)
+    incident_date    DATE NOT NULL,                        -- 발생일자
+    incident_time    TIME NOT NULL,                        -- 발생시간
+    phone_number     VARCHAR(20),                          -- 휴대전화 (nullable)
+    reporter_type    ENUM('개인', '기관', '단체', '기업') NOT NULL,  -- 구분
+    reporter_name    VARCHAR(50) NOT NULL,                 -- 이름
+    reporter_email   VARCHAR(100) NOT NULL,                -- 이메일
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP   -- 등록일시
+); 
+
+CREATE TABLE violation_result (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    video_name VARCHAR(255),
+    violation_type VARCHAR(20),
+    helmet_violation VARCHAR(20)
+);
+
+CREATE TABLE violation_frame (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    result_id INT,
+    frame_type VARCHAR(20),
+    frame_index INT,
+    image_path VARCHAR(255),
+    FOREIGN KEY(result_id) REFERENCES violation_result(id)
+);

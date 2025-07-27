@@ -1,0 +1,199 @@
+{# templates/dashboard.html #}
+{% extends "layout.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block head %}
+  {{ super() }}
+  <!-- Chart.js 불러오기 (로컬) -->
+  <script src="{{ url_for('static', filename='js/chart.umd.min.js') }}"></script>
+  <script>
+    // bfcache(back/forward cache) 방지
+    window.addEventListener('pageshow', function(event) {
+      var nav = performance.getEntriesByType('navigation')[0] ||
+                { type: performance.navigation.type };
+      if (event.persisted || nav.type === 2) {
+        window.location.href = "{{ url_for('login') }}";
+      }
+    });
+  </script>
+{% endblock %}
+
+{% block content %}
+  <h2>Dashboard</h2>
+
+  <div class="summary-cards">
+    <!-- 올해 총 신고 건수 -->
+    <div class="summary-card card-blue">
+      <div class="info">
+        <div class="title">올해 총 신고 건수</div>
+        <div class="value">{{ total_year }} 건</div>
+      </div>
+      <div class="chart">
+        <canvas id="sparklineYear"></canvas>
+      </div>
+    </div>
+
+    <!-- 이번달 총 신고 건수 -->
+    <div class="summary-card card-yellow">
+      <div class="info">
+        <div class="title">이번 달 총 신고 건수</div>
+        <div class="value">{{ total_month }} 건</div>
+      </div>
+      <div class="chart">
+        <canvas id="sparklineMonth"></canvas>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="chart-box">
+    <div class="chart-container">
+      <canvas id="monthlyChart"></canvas>
+    </div>
+
+    <div class="chart-container">
+      <canvas id="typeRatioChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card top-violation-card">
+    <div class="card-header">
+      <h3>위반 사항에 따른 신고 건수</h3>
+    </div>
+    <table class="top-table">
+      <thead>
+        <tr>
+          <th>SN</th>
+          <th>Name</th>
+          <th>신고 수</th>
+          <th>처벌 횟수</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for row in top_rows %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td class="type-cell">
+          {{ row.violation_type }}
+        </td>
+        <td>{{ "{:,}".format(row.report_count) }}</td>
+        <td style="color: green;">
+          {{ "{:,}".format(row.punishment_count) }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+  <script>
+    // 차트 그리는 코드
+    document.addEventListener('DOMContentLoaded', function() {
+      // Sparkline
+      function makeSparkline(ctx, data, color) {
+        new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: data.map((_,i)=>i+1),
+        datasets: [{
+          data: data,
+          borderColor: color,
+          borderWidth: 3,
+          pointRadius: 0,
+          tension: 0.4,
+          fill: 'start',                    // 아래 면적 채우기
+          backgroundColor: color + '33'     // 반투명 (hex 끝에 33 = alpha 약 0.2)
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { display: false },
+          y: { display: false }
+        },
+        layout: { padding: 0 }
+      }
+    });
+  }
+
+      // 1) Sparkline – 연간
+      makeSparkline(
+      document.getElementById('sparklineYear').getContext('2d'),
+      {{ sparklineYear|tojson }},
+      '#5a65ea'
+    );
+      // 2) Sparkline – 월간
+      makeSparkline(
+      document.getElementById('sparklineMonth').getContext('2d'),
+      {{ sparklineMonth|tojson }},
+      '#f6c23e'
+    );
+
+      // 3) 월별 신고 건수 (막대)
+      new Chart(
+        document.getElementById('monthlyChart').getContext('2d'),
+        {
+          type: 'bar',
+          data: {
+            labels: ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'],
+            datasets: [{
+              label: '신고 수',
+              data: {{ sparklineYear|tojson }},
+              backgroundColor: '#5a65ea'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              title: {
+                display: true,
+                text: '월별 신고 건수',
+                position: 'top',
+                align: 'start',
+                padding: { top: 10, bottom: 20 },
+                font: { size: 18, weight: 'bold' },
+                color: 'black'
+              },
+              legend: { display: false }
+            }
+          }
+        }
+      );
+
+      // 4) 위반 유형 비율 (도넛)
+      new Chart(
+        document.getElementById('typeRatioChart').getContext('2d'),
+        {
+          type: 'doughnut',
+          data: {
+            labels: {{ type_labels|tojson }},
+            datasets: [{
+              data: {{ type_data|tojson }},
+              backgroundColor: ['#ff7675','#74b9ff','#fdcb6e','#55efc4','#a29bfe']
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              title: {
+                display: true,
+                text: '위반 유형 비율',
+                position: 'top',
+                align: 'start',
+                padding: { top: 10, bottom: 20 },
+                font: { size: 18, weight: 'bold' },
+                color: 'black'
+              },
+              legend: { position: 'right' }
+            }
+          }
+        }
+      );
+    });
+  </script>
+{% endblock %}
