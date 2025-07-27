@@ -169,44 +169,55 @@ def delete_selected():
 
 @list_bp.route('/analytics/<int:report_id>')
 def analytics(report_id):
+    # --- 1) DB에서 report 한 건 조회 ---
     conn = get_db_connection()
     try:
-        # ① 커서 얻기 (필요시 DictCursor로 지정)
-        #    ※ pymysql 사용 시 예: conn.cursor(cursor=pymysql.cursors.DictCursor)
         cur = conn.cursor()
-        # ② SQL 실행
-        sql = """
+        cur.execute("""
             SELECT pr.*, vr.violation_type
             FROM public_reports pr
             LEFT JOIN violation_result vr
               ON pr.media_path = vr.video_name
             WHERE pr.report_id = %s
-        """
-        cur.execute(sql, (report_id,))
-        # ③ 결과 가져오기
+        """, (report_id,))
         report = cur.fetchone()
     finally:
         cur.close()
         conn.close()
 
-    if report is None:
+    if not report:
         abort(404, f"Report {report_id} not found")
 
-    # ④ 업로드된 파일 목록 읽기
-    upload_dir = os.path.join(
-        current_app.static_folder, 'uploads', str(report_id)
-    )
-    files = []
+    static_root = current_app.static_folder
+
+    # ③ uploads 폴더 스캔 → 모든 미디어 목록 + 첫 비디오 선택
+    upload_dir = os.path.join(static_root, 'uploads', str(report_id))
+    upload_files = []
+    video_path   = None
     if os.path.isdir(upload_dir):
         for fname in sorted(os.listdir(upload_dir)):
-            ext = fname.lower().rsplit('.', 1)[-1]
-            if ext in ('mp4', 'webm', 'ogg', 'png', 'jpg', 'jpeg', 'gif'):
-                # 'uploads/5/foo.mp4' 처럼 static 폴더 기준 상대경로로 넣어줍니다
-                files.append(f"uploads/{report_id}/{fname}")
+            ext = fname.rsplit('.', 1)[-1].lower()
+            if ext in ('mp4','webm','ogg','png','jpg','jpeg','gif'):
+                rel = f"uploads/{report_id}/{fname}"
+                upload_files.append(rel)
+                if video_path is None and ext in ('mp4','webm','ogg'):
+                    video_path = rel
 
-    # ⑤ 템플릿 렌더링
+    # ④ imgshots 폴더 스캔 → 스냅샷 목록
+    shot_dir = os.path.join(static_root, 'imgshots', str(report_id))
+    shot_files = []
+    if os.path.isdir(shot_dir):
+        for fname in sorted(os.listdir(shot_dir)):
+            ext = fname.rsplit('.', 1)[-1].lower()
+            if ext in ('png','jpg','jpeg','gif'):
+                shot_files.append(f"imgshots/{report_id}/{fname}")
+
+    # ⑤ 썸네일용 리스트 결정: imgshots 있으면 shot_files, 없으면 upload_files
+    files = shot_files if shot_files else upload_files
+
     return render_template(
         'analytics.html',
         report=report,
-        files=files
+        files=files,
+        video_path=video_path
     )

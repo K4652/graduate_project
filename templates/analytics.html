@@ -6,6 +6,7 @@
   {# List 페이지 CSS 불러오기 #}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/list.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  
 {% endblock %}
 
 {% block content %}
@@ -55,114 +56,82 @@
   </div>
   <!-- 1) 메인 디스플레이 영역 -->
   <div class="detail-row">
-    <!-- 왼쪽에는 video -->
+    {# 왼쪽: 자동 선택된 video_path #}
     <div class="preview-box">
-      <video id="main-video" controls style="display:none; width: 100%; height: auto;"></video>
+      <video id="main-video" controls muted autoplay loop style="width:100%;">
+        {% if video_path %}
+        <source src="{{ url_for('static', filename=video_path) }}"
+                type="video/mp4">
+        {% else %}
+        <p>동영상을 찾을 수 없습니다.</p>
+        {% endif %}
+      </video>
     </div>
-    <!-- 오른쪽에는 snapshot image -->
+
+    {# 오른쪽: 클릭한 썸네일 이미지 #}
     <div class="preview-box">
-      <img id="main-img" style="display:none; width: 100%; height: auto;"/>
+      <img id="main-img" alt="선택된 이미지" style="width:100%; display:none;">
     </div>
   </div>
-  <!-- 2) 썸네일 영역 -->
+
+  {# 썸네일 영역: imgshots 우선, 없으면 uploads 전체 #}
   <div class="thumb-row">
-    {% for path in files %}
-      <div class="thumb" data-filename="{{ filename }}">
-        {% set ext = path.lower().rsplit('.',1)[1] %}
-        {% if ext in ['mp4','webm','ogg'] %}
-          <video class="thumb-video" 
-                 src="{{ url_for('static', filename=path) }}" 
-                 preload="auto" muted style="display:none">
-          </video>
-          <canvas class="thumb-canvas"></canvas>
-        {% else %}
-          <img class="thumb-img"
-               src="{{ url_for('static', filename='uploads/' ~ filename) }}"
-               alt="{{ filename }}">
-        {% endif %}
-      </div>
-    {% endfor %}
-    {% if not files %}
+    {% if files %}
+      {% for path in files %}
+        {% set ext = path.rsplit('.',1)[1].lower() %}
+        <div class="thumb" data-path="{{ path }}" data-ext="{{ ext }}">
+          {% if ext in ['mp4','webm','ogg'] %}
+            <video class="thumb-video"
+                   src="{{ url_for('static', filename=path) }}"
+                   preload="auto" muted style="display:none"></video>
+            <canvas class="thumb-canvas"></canvas>
+          {% else %}
+            <img class="thumb-img"
+                 src="{{ url_for('static', filename=path) }}"
+                 alt="썸네일">
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% else %}
       <p class="no-files">업로드된 파일이 없습니다.</p>
     {% endif %}
   </div>
 
-  <!-- 3) 스크립트: 썸네일 생성 + 클릭 핸들러 -->
   <script>
-    /*const baseUrl = "{{ url_for('static', filename='uploads/') }}";*/
-    // 3-1) 썸네일 생성
-    document.querySelectorAll('.thumb').forEach(thumb=>{
-      const fn = thumb.dataset.filename;
-      const ext = fn.split('.').pop().toLowerCase();
+    document.addEventListener('DOMContentLoaded', () => {
+      const baseStatic = "{{ url_for('static', filename='') }}";
+      const mainImg   = document.getElementById('main-img');
 
-      if (['mp4','webm','ogg'].includes(ext)) {
-        const video = thumb.querySelector('video.thumb-video');
-        const canvas = thumb.querySelector('canvas.thumb-canvas');
-        const ctx = canvas.getContext('2d');
-
-        video.addEventListener('loadeddata', ()=> {
-          canvas.width  = video.videoWidth;
-          canvas.height = video.videoHeight;
-          ctx.drawImage(video,0,0, canvas.width, canvas.height);
-          video.remove();        // 비디오 엘리먼트 제거
-        });
-        video.load();
-      }
-    });
-
-    // 3-2) 클릭 핸들러: 메인 영역에 띄우기
-    const mainVideo = document.getElementById('main-video');
-    const mainImg   = document.getElementById('main-img');
-
-    document.querySelectorAll('.thumb').forEach(thumb=>{
-      thumb.addEventListener('click', ()=>{
-        const fn  = thumb.dataset.filename;
-        const ext = fn.split('.').pop().toLowerCase();
-        const full = baseUrl + fn;
-
-        if (['mp4','webm','ogg'].includes(ext)) {
-          // ▶️ 메인 비디오 보여주기
-          mainVideo.src = full;
-          mainVideo.style.display = 'block';
-          // ▶️ 메인 스냅샷도 생성
-          mainImg.style.display = 'block';
-          // 임시 비디오로 첫 프레임 캡처
-          const tmp = document.createElement('video');
-          tmp.src   = full;
-          tmp.muted = true;
-          tmp.addEventListener('loadeddata', ()=>{
-            const canvas = document.createElement('canvas');
-            canvas.width  = tmp.videoWidth;
-            canvas.height = tmp.videoHeight;
-            canvas.getContext('2d').drawImage(tmp,0,0);
-            mainImg.src = canvas.toDataURL();  
-          });
-          tmp.load();
-        } else {
-          // 🖼️ 그냥 이미지 파일일 때
-          mainVideo.style.display = 'none';
-          mainImg.src = full;
-          mainImg.style.display = 'block';
+      // 1) 비디오 썸네일 → 캔버스에 첫 프레임
+      document.querySelectorAll('.thumb').forEach(thumb => {
+        if (thumb.dataset.ext.match(/mp4|webm|ogg/)) {
+          const vid = thumb.querySelector('video.thumb-video');
+          const canvas = thumb.querySelector('canvas.thumb-canvas');
+          vid.addEventListener('loadeddata', () => {
+            canvas.width  = vid.videoWidth;
+            canvas.height = vid.videoHeight;
+            canvas.getContext('2d').drawImage(vid, 0, 0);
+          }, { once: true });
+          vid.load();
         }
       });
-    });
-    document.querySelectorAll('.star-icon').forEach(icon => {
-    icon.addEventListener('click', async () => {
-      icon.classList.toggle('active');
-      const fav = icon.classList.contains('active'),
-            id  = icon.dataset.id;
-      try {
-        let res = await fetch("{{ url_for('list.toggle_favorite') }}", {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ id, fav })
+
+      // 2) 클릭 시 오른쪽에만 이미지 표시
+      document.querySelectorAll('.thumb').forEach(thumb => {
+        thumb.addEventListener('click', () => {
+          const path = thumb.dataset.path;
+          const ext  = thumb.dataset.ext;
+          const url  = baseStatic + path;
+
+          if (ext.match(/mp4|webm|ogg/)) {
+            const canvas = thumb.querySelector('canvas.thumb-canvas');
+            mainImg.src = canvas.toDataURL();
+          } else {
+            mainImg.src = url;
+          }
+          mainImg.style.display = 'block';
         });
-        if(!res.ok) throw '';
-      } catch(err) {
-        icon.classList.toggle('active');
-        alert('즐겨찾기 저장 실패');
-      }
+      });
     });
-  });
   </script>
 {% endblock %}
