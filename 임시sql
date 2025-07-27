@@ -30,6 +30,7 @@ CREATE TABLE public_reports (
     reporter_name    VARCHAR(50) NOT NULL,                 -- 이름
     reporter_email   VARCHAR(100) NOT NULL,                -- 이메일
     created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP   -- 등록일시
+    is_starred       TINYINT(1)                            -- 즐겨찾기 여부
 ); 
 
 CREATE TABLE violation_result (

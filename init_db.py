@@ -67,7 +67,8 @@ try:
             reporter_type  ENUM('개인','기관','단체','기업') NOT NULL,
             reporter_name  VARCHAR(50) NOT NULL,
             reporter_email VARCHAR(100) NOT NULL,
-            created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            is_starred     TINYINT(1)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         """)
 
