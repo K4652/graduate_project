@@ -50,6 +50,33 @@
               ★
             </span>
           </td>
+          <td><div class="more-menu">⋯
+              <ul class="more-dropdown">
+            <li>
+              <a href="#" class="edit-btn">
+              <!-- ① 편집 아이콘 -->
+              <img
+                src="{{ url_for('static', filename='img/Edit.png') }}"
+                alt="Edit"
+                class="dropdown-icon"
+              >
+              Edit
+              </a>
+            </li>
+            <li>
+              <a href="#" class="delete-btn">
+                <!-- ② 삭제 아이콘 -->
+                <img
+                  src="{{ url_for('static', filename='img/Delete.png') }}"
+                  alt="Delete"
+                  class="dropdown-icon"
+                >
+                Delete
+              </a>
+            </li>
+          </ul>
+            </div>
+          </td>
         </tr>
       </tbody>
     </table>
@@ -132,6 +159,91 @@
           mainImg.style.display = 'block';
         });
       });
+      document.querySelectorAll('.edit-btn').forEach(btn=>{
+    btn.addEventListener('click', e => {
+      e.preventDefault();
+      const tr = btn.closest('tr');
+      if (tr.classList.contains('editing')) return;
+      tr.classList.add('editing');
+      // 원본 보관
+      tr._orig = [2,3,4,5].map(i=>tr.children[i].innerText.trim());
+      // input 교체
+      [2,3,4,5].forEach((i, idx)=>{
+        const cell = tr.children[i], val = cell.innerText.trim();
+        cell.innerHTML = `<input value="${val}" />`;
+      });
+      // 메뉴 바꾸기
+      const menu = tr.querySelector('.more-dropdown');
+      menu.innerHTML = `
+        <li><a href="#" class="save-btn">Save</a></li>
+        <li><a href="#" class="cancel-btn">Cancel</a></li>
+      `;
+      // Save
+      menu.querySelector('.save-btn').addEventListener('click', async ev=>{
+        ev.preventDefault();
+        const payload = { row_id: tr.dataset.reportId };
+        [2,3,4,5].forEach(i=>{
+          payload[i] = tr.children[i].querySelector('input').value;
+        });
+        try {
+          let res = await fetch("{{ url_for('list.update_report') }}", {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify(payload)
+          });
+          if(!res.ok) throw '';
+          // 반영
+          [2,3,4,5].forEach(i=>{
+            tr.children[i].innerText = payload[i];
+          });
+          exitEdit(tr);
+        } catch {
+          alert('저장 실패');
+          exitEdit(tr, true);
+        }
+      });
+      // Cancel
+      menu.querySelector('.cancel-btn').addEventListener('click', ev=>{
+        ev.preventDefault();
+        exitEdit(tr, true);
+      });
+    });
+  });
+  function exitEdit(tr, rollback){
+    if(rollback){
+      [2,3,4,5].forEach((i,idx)=>{
+        tr.children[i].innerText = tr._orig[idx];
+      });
+    }
+    delete tr._orig;
+    tr.classList.remove('editing');
+    // 메뉴 복원
+    tr.querySelector('.more-dropdown').innerHTML = `
+      <li><a href="#" class="edit-btn">Edit</a></li>
+      <li><a href="#" class="delete-btn">Delete</a></li>
+    `;
+  }
+
+  // 7) 개별 삭제
+  document.querySelectorAll('.delete-btn').forEach(btn=>{
+    btn.addEventListener('click', e => {
+      e.preventDefault();
+      const tr = btn.closest('tr'),
+            id = tr.dataset.reportId;
+      if(!confirm('삭제하시겠습니까?')) return;
+      fetch("{{ url_for('list.delete_report') }}", {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ row_id: id })
+      })
+      .then(r=>r.json())
+      .then(res=>{
+        if(res.status==='ok') tr.remove();
+        else alert('삭제 실패');
+      })
+      .catch(()=>alert('오류'));
+    });
+  });
     });
   </script>
 {% endblock %}
