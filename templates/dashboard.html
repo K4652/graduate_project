@@ -77,9 +77,9 @@
         <td class="type-cell">
           {{ row.violation_type }}
         </td>
-        <td>{{ "{:,}".format(row.report_count) }}</td>
+        <td>{{ '{:,}'.format(row.punishment_count or 0) }}</td>
         <td style="color: green;">
-          {{ "{:,}".format(row.punishment_count) }}
+          {{ '{:,}'.format(row.punishment_count or 0) }}
         </td>
       </tr>
       {% endfor %}

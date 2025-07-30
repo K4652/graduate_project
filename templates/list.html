@@ -73,7 +73,7 @@
         <td><a href="{{ url_for('static', filename=r.media_path) }}"
            download class="btn-download">동영상 다운로드</a></td>
         <td>
-          <a href="{{ url_for('list.analytics', report_id=r.report_id) }}"
+          <a href="{{ url_for('analytics.view', report_id=r.report_id) }}"
              class="btn-link">
              영상 분석 연결
            </a>

@@ -42,7 +42,7 @@ def login():
             user = get_user_by_email(email)
             # 세션에 사용자 이름 저장
             session['user_name'] = user['name']
-            return redirect(url_for('upload.upload'))
+            return redirect(url_for('dashboard.dashboard'))
         else:
             flash('이메일 또는 비밀번호가 틀렸습니다.', 'danger')
             return render_template('login.html'), 401

@@ -5,6 +5,9 @@ from controllers.auth_controller      import login, signup, logout
 from controllers.dashboard_controller import dashboard_bp
 from controllers.upload_controller    import upload_bp
 from controllers.list_controller      import list_bp
+from controllers.analytics_controller import analytics_bp
+
+
 
 import subprocess, threading, os
 
@@ -41,6 +44,7 @@ app.add_url_rule('/logout', 'logout', logout)
 app.register_blueprint(upload_bp)  # /upload
 app.register_blueprint(list_bp)    # /list
 app.register_blueprint(dashboard_bp)
+app.register_blueprint(analytics_bp)
 
 @app.after_request
 def add_no_cache_headers(response):

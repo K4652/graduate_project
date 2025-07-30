@@ -14,7 +14,7 @@
   <div class="selector-row">
     <table>
       <thead>
-        <tr>
+        <tr data-report-id="{{ report.report_id }}">
           <th class="sortable">신고 번호</th>
           <th class="sortable">교통법규 위반 사항</th>
           <th class="sortable">영상 날짜</th>
@@ -22,23 +22,24 @@
           <th>신고 장소</th>
           <th>동영상 다운로드</th>
           <th>즐겨찾기</th>
+          <th>추가메뉴</th>
         </tr>
       </thead>
       <tbody>
-        <tr>
+        <tr data-report-id="{{ report.report_id }}">
           <td>{{ report.report_id }}</td>
-          <td>
+          <td class="col-violation">
             <img src="{{ url_for('static', filename='img/Alert.png') }}"
           class="icon-sm" alt="">
             {{ report.violation_type or '–' }}
           </td>
-          <td>
+          <td class="col-date">
             <img src="{{ url_for('static', filename='img/Calendar.png') }}"
                  class="icon-sm" alt="캘린더">
             {{ report.incident_date }}
           </td>
-          <td>{{ report.vehicle_number }}</td>
-          <td>{{ report.location }}</td>
+          <td class="col-plate">{{ report.vehicle_number }}</td>
+          <td class="col-location">{{ report.location }}</td>
           <td>
             <a href="{{ url_for('static', filename=report.media_path) }}"
                download class="btn-download">
@@ -46,7 +47,8 @@
             </a>
           </td>
           <td>
-            <span class="star-icon{% if report.is_starred %} active{% endif %}">
+            <span class="star-icon{% if report.is_starred %} active{% endif %}"
+                  data-id="{{ report.report_id }}">
               ★
             </span>
           </td>
@@ -159,70 +161,83 @@
           mainImg.style.display = 'block';
         });
       });
-      document.querySelectorAll('.edit-btn').forEach(btn=>{
-    btn.addEventListener('click', e => {
-      e.preventDefault();
-      const tr = btn.closest('tr');
-      if (tr.classList.contains('editing')) return;
-      tr.classList.add('editing');
-      // 원본 보관
-      tr._orig = [2,3,4,5].map(i=>tr.children[i].innerText.trim());
-      // input 교체
-      [2,3,4,5].forEach((i, idx)=>{
-        const cell = tr.children[i], val = cell.innerText.trim();
-        cell.innerHTML = `<input value="${val}" />`;
-      });
-      // 메뉴 바꾸기
-      const menu = tr.querySelector('.more-dropdown');
-      menu.innerHTML = `
-        <li><a href="#" class="save-btn">Save</a></li>
-        <li><a href="#" class="cancel-btn">Cancel</a></li>
-      `;
-      // Save
-      menu.querySelector('.save-btn').addEventListener('click', async ev=>{
-        ev.preventDefault();
-        const payload = { row_id: tr.dataset.reportId };
-        [2,3,4,5].forEach(i=>{
-          payload[i] = tr.children[i].querySelector('input').value;
+      document.querySelectorAll('.edit-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.preventDefault();
+    const tr = btn.closest('tr');
+    if (tr.classList.contains('editing')) return;
+    tr.classList.add('editing');
+    // 원본 보관 (순서: violation_type, incident_date, vehicle_number, location)
+    tr._orig = [
+      tr.querySelector('td.col-violation').innerText.trim(),
+      tr.querySelector('td.col-date').innerText.trim(),
+      tr.querySelector('td.col-plate').innerText.trim(),
+      tr.querySelector('td.col-location').innerText.trim(),
+    ];
+    // input으로 교체
+    tr.querySelector('td.col-violation').innerHTML = `<input value="${tr._orig[0]}" />`;
+    tr.querySelector('td.col-date').innerHTML      = `<input value="${tr._orig[1]}" />`;
+    tr.querySelector('td.col-plate').innerHTML     = `<input value="${tr._orig[2]}" />`;
+    tr.querySelector('td.col-location').innerHTML  = `<input value="${tr._orig[3]}" />`;
+
+    // 메뉴 바꾸기
+    const menu = tr.querySelector('.more-dropdown');
+    menu.innerHTML = `
+      <li><a href="#" class="save-btn">Save</a></li>
+      <li><a href="#" class="cancel-btn">Cancel</a></li>
+    `;
+
+    // Save
+    menu.querySelector('.save-btn').addEventListener('click', async ev=>{
+      ev.preventDefault();
+      const payload = {
+        row_id: tr.dataset.reportId,
+        violation_type:  tr.querySelector('td.col-violation input').value,
+        incident_date:   tr.querySelector('td.col-date input').value,
+        vehicle_number:  tr.querySelector('td.col-plate input').value,
+        location:        tr.querySelector('td.col-location input').value
+      };
+      try {
+        let res = await fetch("{{ url_for('analytics.update_report') }}", {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(payload)
         });
-        try {
-          let res = await fetch("{{ url_for('list.update_report') }}", {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify(payload)
-          });
-          if(!res.ok) throw '';
-          // 반영
-          [2,3,4,5].forEach(i=>{
-            tr.children[i].innerText = payload[i];
-          });
-          exitEdit(tr);
-        } catch {
-          alert('저장 실패');
-          exitEdit(tr, true);
-        }
-      });
-      // Cancel
-      menu.querySelector('.cancel-btn').addEventListener('click', ev=>{
-        ev.preventDefault();
+        let j = await res.json();
+        if(!res.ok || j.status!=='ok') throw '';
+        // 반영
+        tr.querySelector('td.col-violation').innerText = payload.violation_type;
+        tr.querySelector('td.col-date').innerText      = payload.incident_date;
+        tr.querySelector('td.col-plate').innerText     = payload.vehicle_number;
+        tr.querySelector('td.col-location').innerText  = payload.location;
+        exitEdit(tr);
+      } catch {
+        alert('저장 실패');
         exitEdit(tr, true);
-      });
+      }
+    });
+    // Cancel
+    menu.querySelector('.cancel-btn').addEventListener('click', ev=>{
+      ev.preventDefault();
+      exitEdit(tr, true);
     });
   });
-  function exitEdit(tr, rollback){
-    if(rollback){
-      [2,3,4,5].forEach((i,idx)=>{
-        tr.children[i].innerText = tr._orig[idx];
-      });
-    }
-    delete tr._orig;
-    tr.classList.remove('editing');
-    // 메뉴 복원
-    tr.querySelector('.more-dropdown').innerHTML = `
-      <li><a href="#" class="edit-btn">Edit</a></li>
-      <li><a href="#" class="delete-btn">Delete</a></li>
-    `;
+});
+
+function exitEdit(tr, rollback){
+  if(rollback){
+    tr.querySelector('td.col-violation').innerText = tr._orig[0];
+    tr.querySelector('td.col-date').innerText      = tr._orig[1];
+    tr.querySelector('td.col-plate').innerText     = tr._orig[2];
+    tr.querySelector('td.col-location').innerText  = tr._orig[3];
   }
+  delete tr._orig;
+  tr.classList.remove('editing');
+  tr.querySelector('.more-dropdown').innerHTML = `
+    <li><a href="#" class="edit-btn">Edit</a></li>
+    <li><a href="#" class="delete-btn">Delete</a></li>
+  `;
+}
 
   // 7) 개별 삭제
   document.querySelectorAll('.delete-btn').forEach(btn=>{
@@ -231,7 +246,7 @@
       const tr = btn.closest('tr'),
             id = tr.dataset.reportId;
       if(!confirm('삭제하시겠습니까?')) return;
-      fetch("{{ url_for('list.delete_report') }}", {
+      fetch("{{ url_for('analytics.delete_report') }}", {
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ row_id: id })
@@ -244,6 +259,25 @@
       .catch(()=>alert('오류'));
     });
   });
+  document.querySelectorAll('.star-icon').forEach(icon => {
+    icon.addEventListener('click', async () => {
+      icon.classList.toggle('active');
+      const fav = icon.classList.contains('active'),
+            id  = icon.dataset.id;
+      try {
+        let res = await fetch("{{ url_for('analytics.toggle_favorite') }}", {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ id, fav })
+        });
+        if(!res.ok) throw '';
+      } catch(err) {
+        icon.classList.toggle('active');
+        alert('즐겨찾기 저장 실패');
+      }
+    });
+  });
+
     });
   </script>
 {% endblock %}
