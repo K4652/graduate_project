@@ -6,7 +6,7 @@ class Config:
     # MySQL 연결 설정
     DB_HOST     = 'localhost'
     DB_USER     = 'root'
-    DB_PASSWORD = '12345678'
+    DB_PASSWORD = '1234'
     DB_NAME     = 'blackbox'
     DB_PORT     = 3306
     # 업로드 폴더(기존 그대로)
