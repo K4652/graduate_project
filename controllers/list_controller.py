@@ -1,5 +1,7 @@
 import os
 import pymysql
+import smtplib
+from email.mime.text import MIMEText
 from flask import (Blueprint, render_template,
 request, jsonify, abort, current_app)
 from config import Config
@@ -166,3 +168,66 @@ def delete_selected():
         return jsonify(success=False, message=str(e)), 500
     finally:
         conn.close()
+
+def get_report_by_id(report_id):
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT report_id, title, content, vehicle_number,
+                       incident_date, incident_time, reporter_email
+                FROM public_reports
+                WHERE report_id=%s
+            """, (report_id,))
+            return cur.fetchone()
+    finally:
+        conn.close()
+
+@list_bp.route('/complete/<int:report_id>', methods=['POST'])
+def complete_report(report_id):
+    try:
+        report = get_report_by_id(report_id)
+        if not report:
+            return jsonify({"message": "신고를 찾을 수 없습니다."}), 404
+
+        citizen_email = report['reporter_email']
+
+        # 메일 작성
+        body = f"""
+        [신고 처리 완료 안내]
+
+        신고 ID: {report['report_id']}
+        제목: {report['title']}
+        내용: {report['content']}
+        차량번호: {report['vehicle_number'] or '-'}
+        발생일시: {report['incident_date']} {report['incident_time']}
+
+        귀하의 신고가 처리 완료되었습니다.
+        """
+        msg = MIMEText(body)
+        msg['Subject'] = f"[처리 완료] 신고 {report['report_id']}"
+        msg['From'] = "shinhanblackbox@gmail.com"
+        msg['To'] = citizen_email
+
+        # 메일 발송
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            server.login('shinhanblackbox@gmail.com', 'tvcrzxjorhingvtw')
+            server.send_message(msg)
+
+        # DB 처리 상태 업데이트
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute("""
+                UPDATE public_reports
+                SET is_completed=1, completed_at=NOW()
+                WHERE report_id=%s
+            """, (report_id,))
+        conn.commit()
+        conn.close()
+
+        return jsonify({"message": f"{citizen_email}로 처리 완료 메일을 전송했습니다."})
+
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify({"message": f"서버 오류: {str(e)}"}), 500

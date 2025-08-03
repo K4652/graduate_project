@@ -39,7 +39,7 @@
     <th>
       영상분석
     </th>
-
+    <th>분석 완료</th>
     <th class="sortable" data-type="true">
       즐겨찾기 <span class="arrow">▼</span>
     </th>
@@ -77,6 +77,24 @@
              class="btn-link">
              영상 분석 연결
            </a>
+        </td>
+        <td>
+          <button class="btn-complete" data-report-id="{{ r.report_id }}">
+            분석 완료
+          </button>
+
+          <script>
+          document.querySelectorAll('.btn-complete').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const reportId = btn.dataset.reportId;
+              fetch(`/list/complete/${reportId}`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => alert(data.message))
+                .catch(err => alert("오류 발생: " + err));
+            });
+          });
+          </script>
+
         </td>
         <td>
     <span
