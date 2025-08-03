@@ -1,0 +1,421 @@
+diff --git a/templates/analytics.html b/templates/analytics.html
+index f7cdc0d..dc3353a 100644
+--- a/templates/analytics.html
++++ b/templates/analytics.html
+@@ -6,7 +6,6 @@
+   {# List 페이지 CSS 불러오기 #}
+   <link rel="stylesheet" href="{{ url_for('static', filename='css/list.css') }}">
+   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+-  
+ {% endblock %}
+ 
+ {% block content %}
+@@ -14,7 +13,7 @@
+   <div class="selector-row">
+     <table>
+       <thead>
+-        <tr data-report-id="{{ report.report_id }}">
++        <tr>
+           <th class="sortable">신고 번호</th>
+           <th class="sortable">교통법규 위반 사항</th>
+           <th class="sortable">영상 날짜</th>
+@@ -22,24 +21,23 @@
+           <th>신고 장소</th>
+           <th>동영상 다운로드</th>
+           <th>즐겨찾기</th>
+-          <th>추가메뉴</th>
+         </tr>
+       </thead>
+       <tbody>
+-        <tr data-report-id="{{ report.report_id }}">
++        <tr>
+           <td>{{ report.report_id }}</td>
+-          <td class="col-violation">
++          <td>
+             <img src="{{ url_for('static', filename='img/Alert.png') }}"
+           class="icon-sm" alt="">
+             {{ report.violation_type or '–' }}
+           </td>
+-          <td class="col-date">
++          <td>
+             <img src="{{ url_for('static', filename='img/Calendar.png') }}"
+                  class="icon-sm" alt="캘린더">
+             {{ report.incident_date }}
+           </td>
+-          <td class="col-plate">{{ report.vehicle_number }}</td>
+-          <td class="col-location">{{ report.location }}</td>
++          <td>{{ report.vehicle_number }}</td>
++          <td>{{ report.location }}</td>
+           <td>
+             <a href="{{ url_for('static', filename=report.media_path) }}"
+                download class="btn-download">
+@@ -47,225 +45,114 @@
+             </a>
+           </td>
+           <td>
+-            <span class="star-icon{% if report.is_starred %} active{% endif %}"
+-                  data-id="{{ report.report_id }}">
++            <span class="star-icon{% if report.is_starred %} active{% endif %}">
+               ★
+             </span>
+           </td>
+-          <td><div class="more-menu">⋯
+-              <ul class="more-dropdown">
+-            <li>
+-              <a href="#" class="edit-btn">
+-              <!-- ① 편집 아이콘 -->
+-              <img
+-                src="{{ url_for('static', filename='img/Edit.png') }}"
+-                alt="Edit"
+-                class="dropdown-icon"
+-              >
+-              Edit
+-              </a>
+-            </li>
+-            <li>
+-              <a href="#" class="delete-btn">
+-                <!-- ② 삭제 아이콘 -->
+-                <img
+-                  src="{{ url_for('static', filename='img/Delete.png') }}"
+-                  alt="Delete"
+-                  class="dropdown-icon"
+-                >
+-                Delete
+-              </a>
+-            </li>
+-          </ul>
+-            </div>
+-          </td>
+         </tr>
+       </tbody>
+     </table>
+   </div>
+   <!-- 1) 메인 디스플레이 영역 -->
+   <div class="detail-row">
+-    {# 왼쪽: 자동 선택된 video_path #}
++    <!-- 왼쪽에는 video -->
+     <div class="preview-box">
+-      <video id="main-video" controls muted autoplay loop style="width:100%;">
+-        {% if video_path %}
+-        <source src="{{ url_for('static', filename=video_path) }}"
+-                type="video/mp4">
+-        {% else %}
+-        <p>동영상을 찾을 수 없습니다.</p>
+-        {% endif %}
+-      </video>
++      <video id="main-video" controls style="display:none; width: 100%; height: auto;"></video>
+     </div>
+-
+-    {# 오른쪽: 클릭한 썸네일 이미지 #}
++    <!-- 오른쪽에는 snapshot image -->
+     <div class="preview-box">
+-      <img id="main-img" alt="선택된 이미지" style="width:100%; display:none;">
++      <img id="main-img" style="display:none; width: 100%; height: auto;"/>
+     </div>
+   </div>
+-
+-  {# 썸네일 영역: imgshots 우선, 없으면 uploads 전체 #}
++  <!-- 2) 썸네일 영역 -->
+   <div class="thumb-row">
+-    {% if files %}
+-      {% for path in files %}
+-        {% set ext = path.rsplit('.',1)[1].lower() %}
+-        <div class="thumb" data-path="{{ path }}" data-ext="{{ ext }}">
+-          {% if ext in ['mp4','webm','ogg'] %}
+-            <video class="thumb-video"
+-                   src="{{ url_for('static', filename=path) }}"
+-                   preload="auto" muted style="display:none"></video>
+-            <canvas class="thumb-canvas"></canvas>
+-          {% else %}
+-            <img class="thumb-img"
+-                 src="{{ url_for('static', filename=path) }}"
+-                 alt="썸네일">
+-          {% endif %}
+-        </div>
+-      {% endfor %}
+-    {% else %}
++    {% for path in files %}
++      <div class="thumb" data-filename="{{ filename }}">
++        {% set ext = path.lower().rsplit('.',1)[1] %}
++        {% if ext in ['mp4','webm','ogg'] %}
++          <video class="thumb-video" 
++                 src="{{ url_for('static', filename=path) }}" 
++                 preload="auto" muted style="display:none">
++          </video>
++          <canvas class="thumb-canvas"></canvas>
++        {% else %}
++          <img class="thumb-img"
++               src="{{ url_for('static', filename='uploads/' ~ filename) }}"
++               alt="{{ filename }}">
++        {% endif %}
++      </div>
++    {% endfor %}
++    {% if not files %}
+       <p class="no-files">업로드된 파일이 없습니다.</p>
+     {% endif %}
+   </div>
+ 
++  <!-- 3) 스크립트: 썸네일 생성 + 클릭 핸들러 -->
+   <script>
+-    document.addEventListener('DOMContentLoaded', () => {
+-      const baseStatic = "{{ url_for('static', filename='') }}";
+-      const mainImg   = document.getElementById('main-img');
+-
+-      // 1) 비디오 썸네일 → 캔버스에 첫 프레임
+-      document.querySelectorAll('.thumb').forEach(thumb => {
+-        if (thumb.dataset.ext.match(/mp4|webm|ogg/)) {
+-          const vid = thumb.querySelector('video.thumb-video');
+-          const canvas = thumb.querySelector('canvas.thumb-canvas');
+-          vid.addEventListener('loadeddata', () => {
+-            canvas.width  = vid.videoWidth;
+-            canvas.height = vid.videoHeight;
+-            canvas.getContext('2d').drawImage(vid, 0, 0);
+-          }, { once: true });
+-          vid.load();
+-        }
+-      });
+-
+-      // 2) 클릭 시 오른쪽에만 이미지 표시
+-      document.querySelectorAll('.thumb').forEach(thumb => {
+-        thumb.addEventListener('click', () => {
+-          const path = thumb.dataset.path;
+-          const ext  = thumb.dataset.ext;
+-          const url  = baseStatic + path;
+-
+-          if (ext.match(/mp4|webm|ogg/)) {
+-            const canvas = thumb.querySelector('canvas.thumb-canvas');
+-            mainImg.src = canvas.toDataURL();
+-          } else {
+-            mainImg.src = url;
+-          }
+-          mainImg.style.display = 'block';
+-        });
+-      });
+-      document.querySelectorAll('.edit-btn').forEach(btn => {
+-  btn.addEventListener('click', e => {
+-    e.preventDefault();
+-    const tr = btn.closest('tr');
+-    if (tr.classList.contains('editing')) return;
+-    tr.classList.add('editing');
+-    // 원본 보관 (순서: violation_type, incident_date, vehicle_number, location)
+-    tr._orig = [
+-      tr.querySelector('td.col-violation').innerText.trim(),
+-      tr.querySelector('td.col-date').innerText.trim(),
+-      tr.querySelector('td.col-plate').innerText.trim(),
+-      tr.querySelector('td.col-location').innerText.trim(),
+-    ];
+-    // input으로 교체
+-    tr.querySelector('td.col-violation').innerHTML = `<input value="${tr._orig[0]}" />`;
+-    tr.querySelector('td.col-date').innerHTML      = `<input value="${tr._orig[1]}" />`;
+-    tr.querySelector('td.col-plate').innerHTML     = `<input value="${tr._orig[2]}" />`;
+-    tr.querySelector('td.col-location').innerHTML  = `<input value="${tr._orig[3]}" />`;
++    /*const baseUrl = "{{ url_for('static', filename='uploads/') }}";*/
++    // 3-1) 썸네일 생성
++    document.querySelectorAll('.thumb').forEach(thumb=>{
++      const fn = thumb.dataset.filename;
++      const ext = fn.split('.').pop().toLowerCase();
+ 
+-    // 메뉴 바꾸기
+-    const menu = tr.querySelector('.more-dropdown');
+-    menu.innerHTML = `
+-      <li><a href="#" class="save-btn">Save</a></li>
+-      <li><a href="#" class="cancel-btn">Cancel</a></li>
+-    `;
++      if (['mp4','webm','ogg'].includes(ext)) {
++        const video = thumb.querySelector('video.thumb-video');
++        const canvas = thumb.querySelector('canvas.thumb-canvas');
++        const ctx = canvas.getContext('2d');
+ 
+-    // Save
+-    menu.querySelector('.save-btn').addEventListener('click', async ev=>{
+-      ev.preventDefault();
+-      const payload = {
+-        row_id: tr.dataset.reportId,
+-        violation_type:  tr.querySelector('td.col-violation input').value,
+-        incident_date:   tr.querySelector('td.col-date input').value,
+-        vehicle_number:  tr.querySelector('td.col-plate input').value,
+-        location:        tr.querySelector('td.col-location input').value
+-      };
+-      try {
+-        let res = await fetch("{{ url_for('analytics.update_report') }}", {
+-          method:'POST',
+-          headers:{'Content-Type':'application/json'},
+-          body: JSON.stringify(payload)
++        video.addEventListener('loadeddata', ()=> {
++          canvas.width  = video.videoWidth;
++          canvas.height = video.videoHeight;
++          ctx.drawImage(video,0,0, canvas.width, canvas.height);
++          video.remove();        // 비디오 엘리먼트 제거
+         });
+-        let j = await res.json();
+-        if(!res.ok || j.status!=='ok') throw '';
+-        // 반영
+-        tr.querySelector('td.col-violation').innerText = payload.violation_type;
+-        tr.querySelector('td.col-date').innerText      = payload.incident_date;
+-        tr.querySelector('td.col-plate').innerText     = payload.vehicle_number;
+-        tr.querySelector('td.col-location').innerText  = payload.location;
+-        exitEdit(tr);
+-      } catch {
+-        alert('저장 실패');
+-        exitEdit(tr, true);
++        video.load();
+       }
+     });
+-    // Cancel
+-    menu.querySelector('.cancel-btn').addEventListener('click', ev=>{
+-      ev.preventDefault();
+-      exitEdit(tr, true);
+-    });
+-  });
+-});
+ 
+-function exitEdit(tr, rollback){
+-  if(rollback){
+-    tr.querySelector('td.col-violation').innerText = tr._orig[0];
+-    tr.querySelector('td.col-date').innerText      = tr._orig[1];
+-    tr.querySelector('td.col-plate').innerText     = tr._orig[2];
+-    tr.querySelector('td.col-location').innerText  = tr._orig[3];
+-  }
+-  delete tr._orig;
+-  tr.classList.remove('editing');
+-  tr.querySelector('.more-dropdown').innerHTML = `
+-    <li><a href="#" class="edit-btn">Edit</a></li>
+-    <li><a href="#" class="delete-btn">Delete</a></li>
+-  `;
+-}
++    // 3-2) 클릭 핸들러: 메인 영역에 띄우기
++    const mainVideo = document.getElementById('main-video');
++    const mainImg   = document.getElementById('main-img');
++
++    document.querySelectorAll('.thumb').forEach(thumb=>{
++      thumb.addEventListener('click', ()=>{
++        const fn  = thumb.dataset.filename;
++        const ext = fn.split('.').pop().toLowerCase();
++        const full = baseUrl + fn;
+ 
+-  // 7) 개별 삭제
+-  document.querySelectorAll('.delete-btn').forEach(btn=>{
+-    btn.addEventListener('click', e => {
+-      e.preventDefault();
+-      const tr = btn.closest('tr'),
+-            id = tr.dataset.reportId;
+-      if(!confirm('삭제하시겠습니까?')) return;
+-      fetch("{{ url_for('analytics.delete_report') }}", {
+-        method:'POST',
+-        headers:{'Content-Type':'application/json'},
+-        body: JSON.stringify({ row_id: id })
+-      })
+-      .then(r=>r.json())
+-      .then(res=>{
+-        if(res.status==='ok') tr.remove();
+-        else alert('삭제 실패');
+-      })
+-      .catch(()=>alert('오류'));
++        if (['mp4','webm','ogg'].includes(ext)) {
++          // ▶️ 메인 비디오 보여주기
++          mainVideo.src = full;
++          mainVideo.style.display = 'block';
++          // ▶️ 메인 스냅샷도 생성
++          mainImg.style.display = 'block';
++          // 임시 비디오로 첫 프레임 캡처
++          const tmp = document.createElement('video');
++          tmp.src   = full;
++          tmp.muted = true;
++          tmp.addEventListener('loadeddata', ()=>{
++            const canvas = document.createElement('canvas');
++            canvas.width  = tmp.videoWidth;
++            canvas.height = tmp.videoHeight;
++            canvas.getContext('2d').drawImage(tmp,0,0);
++            mainImg.src = canvas.toDataURL();  
++          });
++          tmp.load();
++        } else {
++          // 🖼️ 그냥 이미지 파일일 때
++          mainVideo.style.display = 'none';
++          mainImg.src = full;
++          mainImg.style.display = 'block';
++        }
++      });
+     });
+-  });
+-  document.querySelectorAll('.star-icon').forEach(icon => {
++    document.querySelectorAll('.star-icon').forEach(icon => {
+     icon.addEventListener('click', async () => {
+       icon.classList.toggle('active');
+       const fav = icon.classList.contains('active'),
+             id  = icon.dataset.id;
+       try {
+-        let res = await fetch("{{ url_for('analytics.toggle_favorite') }}", {
++        let res = await fetch("{{ url_for('list.toggle_favorite') }}", {
+           method:'POST',
+           headers:{'Content-Type':'application/json'},
+           body: JSON.stringify({ id, fav })
+@@ -277,7 +164,5 @@ function exitEdit(tr, rollback){
+       }
+     });
+   });
+-
+-    });
+   </script>
+ {% endblock %}
+\ No newline at end of file
+diff --git a/templates/dashboard.html b/templates/dashboard.html
+index 5138782..38824cb 100644
+--- a/templates/dashboard.html
++++ b/templates/dashboard.html
+@@ -77,9 +77,9 @@
+         <td class="type-cell">
+           {{ row.violation_type }}
+         </td>
+-        <td>{{ '{:,}'.format(row.punishment_count or 0) }}</td>
++        <td>{{ "{:,}".format(row.report_count) }}</td>
+         <td style="color: green;">
+-          {{ '{:,}'.format(row.punishment_count or 0) }}
++          {{ "{:,}".format(row.punishment_count) }}
+         </td>
+       </tr>
+       {% endfor %}
+diff --git a/templates/layout.html b/templates/layout.html
+index 9e38fab..47c426d 100644
+--- a/templates/layout.html
++++ b/templates/layout.html
+@@ -45,12 +45,12 @@
+ 
+     <!-- 네비게이션 -->
+     <ul>
+-      <!--<li>
++      <li>
+         <a href="{{ url_for('upload.upload') }}"
+            class="{% if request.endpoint=='upload.upload' %}active{% endif %}">
+           Analytics
+         </a>
+-      </li>-->
++      </li>
+       <li>
+         <a href="{{ url_for('dashboard.dashboard') }}"
+            class="{% if request.endpoint=='dashboard.dashboard' %}active{% endif %}">
+diff --git a/templates/list.html b/templates/list.html
+index b74945e..5c8a975 100644
+--- a/templates/list.html
++++ b/templates/list.html
+@@ -73,7 +73,7 @@
+         <td><a href="{{ url_for('static', filename=r.media_path) }}"
+            download class="btn-download">동영상 다운로드</a></td>
+         <td>
+-          <a href="{{ url_for('analytics.view', report_id=r.report_id) }}"
++          <a href="{{ url_for('list.analytics', report_id=r.report_id) }}"
+              class="btn-link">
+              영상 분석 연결
+            </a>
+diff --git a/templates/login.html b/templates/login.html
+index ab4d115..5285539 100644
+--- a/templates/login.html
++++ b/templates/login.html
+@@ -19,6 +19,7 @@
+         
+         <div class="form-extra">
+           <label><input type="checkbox" name="remember"> Remember me</label>
++          <a href="#">비밀번호 리셋</a>
+         </div>
+         
+         <button type="submit">Log in</button>
