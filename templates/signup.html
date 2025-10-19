@@ -4,13 +4,14 @@
   <meta charset="UTF-8">
   <title>Sign Up</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script defer src="{{ url_for('static', filename='js/signup.js') }}"></script>
 </head>
 <body>
   <div class="login-container">
     <div class="login-left">
       <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo">
       <h2>Sign Up</h2>
-      <form method="POST">
+      <form method="POST" id="signupForm">
         <label>접속 코드</label>
         <input type="text" name="access_code" placeholder="#0000" required>
 
@@ -21,7 +22,19 @@
         <input type="email" name="email" placeholder="example@gmail.com" required>
 
         <label>비밀번호</label>
-        <input type="password" name="password" placeholder="●●●●●●" required>
+        <input type="password" name="password" id="password" class="pw-target" placeholder="●●●●●●" required>
+        
+        <label>비밀번호 재확인</label>
+        <input type="password" id="confirm_password" name="confirm_password" placeholder="●●●●●●" required>
+     
+        <div id="pw_error" class="error-text">비밀번호가 일치하지 않습니다.</div>
+
+
+        <div class="show-password-row">
+          <label>
+            <input type="checkbox" id="togglePw"> 비밀번호 표시
+          </label>
+        </div>
 
         <div class="form-extra">
           <label><input type="checkbox" required> 계정을 만드실 때 <a href="#">이용약관</a>과 <a href="#">개인정보 보호정책</a>에 동의하십니까?.</label>

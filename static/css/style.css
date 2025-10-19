@@ -196,3 +196,31 @@ form { margin-bottom:20px; }
   justify-content: center;
   overflow: hidden;
 }
+
+/* 비밀번호 표시 행: 한 줄 정렬 */
+.show-password-row {
+  margin: 6px 0 12px;
+}
+.show-password-row > label {
+  display: inline-flex;           /* 줄바꿈 방지 */
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+/* 체크박스 크기/여백 살짝 정리(선택) */
+.show-password-row input[type="checkbox"] {
+  margin: 0;
+  transform: scale(0.9);
+  transform-origin: left center;
+  vertical-align: middle;
+}
+
+/* 비밀번호 불일치 안내문 */
+.error-text {
+  color: #d32f2f;                 /* 빨간색 */
+  font-size: 12px;                /* 작게 */
+  margin-top: 6px;
+  display: none;                  /* 기본 숨김 */
+}
