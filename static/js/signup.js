@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (!form || !pw1 || !pw2 || !toggle || !errEl) return; // 안전장치
 
+  //임시
   // 비밀번호 표시 토글
   function setType(show) {
     const t = show ? 'text' : 'password';
